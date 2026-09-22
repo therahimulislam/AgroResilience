@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     # Provider Mode (demo or real)
     PROVIDER_MODE: str = os.getenv("PROVIDER_MODE", "demo")
 
+    # Google Gemini
+    GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
+
     class Config:
         case_sensitive = True
         env_file = ".env"
