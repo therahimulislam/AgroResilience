@@ -87,6 +87,34 @@ async def read_farm(
         
     return farm
 
+@router.patch("/{farm_id}", response_model=FarmResponse)
+async def update_farm(
+    farm_id: str,
+    farm_in: FarmUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(select(Farm).filter(Farm.id == farm_id))
+    farm = result.scalars().first()
+    
+    if not farm:
+        raise HTTPException(status_code=404, detail="Farm not found")
+    if farm.farmer_id != current_user.farmer.id:
+        raise HTTPException(status_code=403, detail="Not authorized to access this farm")
+        
+    update_data = farm_in.dict(exclude_unset=True)
+    if "boundary_geojson" in update_data:
+        if update_data["boundary_geojson"]:
+            farm.boundary = parse_geojson(update_data["boundary_geojson"])
+        del update_data["boundary_geojson"]
+        
+    for field, value in update_data.items():
+        setattr(farm, field, value)
+        
+    await db.commit()
+    await db.refresh(farm)
+    return farm
+
 @router.delete("/{farm_id}", response_model=dict)
 async def delete_farm(
     farm_id: str,

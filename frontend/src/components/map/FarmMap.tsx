@@ -11,12 +11,30 @@ interface FarmMapProps {
 export default function FarmMap({ onPolygonDrawn }: FarmMapProps) {
   const mapRef = useRef<any>();
   const drawRef = useRef<MapboxDraw>();
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Center around Assam as a default
   const initialViewState = {
     longitude: 92.9376,
     latitude: 26.2006,
     zoom: 7,
+  };
+
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchQuery) return;
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`);
+      const data = await response.json();
+      if (data && data.length > 0) {
+        const { lat, lon } = data[0];
+        mapRef.current?.flyTo({ center: [parseFloat(lon), parseFloat(lat)], zoom: 12 });
+      } else {
+        alert("Location not found");
+      }
+    } catch (error) {
+      console.error(error);
+    }
   };
 
   const onUpdate = useCallback((e: any) => {
@@ -71,15 +89,31 @@ export default function FarmMap({ onPolygonDrawn }: FarmMapProps) {
   }, [onUpdate]);
 
   return (
-    <div className="w-full h-full relative border border-gray-200 rounded-xl overflow-hidden">
-      <Map
-        ref={mapRef}
-        initialViewState={initialViewState}
-        mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
-        style={{ width: '100%', height: '100%' }}
-      >
-        <NavigationControl position="bottom-right" />
-      </Map>
+    <div className="w-full h-full relative border border-gray-200 rounded-xl overflow-hidden flex flex-col">
+      <div className="bg-white p-2 border-b border-gray-200 shadow-sm z-10 relative">
+        <form onSubmit={handleSearch} className="flex gap-2">
+          <input
+            type="text"
+            placeholder="Search location..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-primary outline-none"
+          />
+          <button type="submit" className="px-3 py-1.5 bg-primary text-white text-sm rounded-md hover:bg-primary-dark">
+            Search
+          </button>
+        </form>
+      </div>
+      <div className="flex-1 relative">
+        <Map
+          ref={mapRef}
+          initialViewState={initialViewState}
+          mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
+          style={{ width: '100%', height: '100%' }}
+        >
+          <NavigationControl position="bottom-right" />
+        </Map>
+      </div>
     </div>
   );
 }

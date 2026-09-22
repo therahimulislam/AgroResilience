@@ -15,6 +15,9 @@ class Settings(BaseSettings):
         "DATABASE_URL", 
         "postgresql+asyncpg://postgres:postgres@localhost:5432/agroresilience"
     )
+    
+    # Provider Mode (demo or real)
+    PROVIDER_MODE: str = os.getenv("PROVIDER_MODE", "demo")
 
     class Config:
         case_sensitive = True

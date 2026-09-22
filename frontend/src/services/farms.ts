@@ -27,6 +27,11 @@ export const createFarm = async (data: Partial<Farm> & { boundary_geojson?: stri
   return response.data;
 };
 
+export const updateFarm = async (id: string, data: Partial<Farm> & { boundary_geojson?: string }) => {
+  const response = await api.patch(`/farms/${id}`, data);
+  return response.data;
+};
+
 export const deleteFarm = async (id: string) => {
   const response = await api.delete(`/farms/${id}`);
   return response.data;
