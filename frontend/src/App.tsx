@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import CreateFarmPage from './pages/CreateFarmPage';
 import DashboardPage from './pages/DashboardPage';
+import AssistantPage from './pages/AssistantPage';
 import { Leaf } from 'lucide-react';
 
 function App() {
@@ -28,6 +29,7 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/farms/new" element={<CreateFarmPage />} />
             <Route path="/farms/:farmId/dashboard" element={<DashboardPage />} />
+            <Route path="/farms/:farmId/assistant" element={<AssistantPage />} />
           </Routes>
         </main>
       </div>
