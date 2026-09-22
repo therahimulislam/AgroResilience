@@ -1,4 +1,4 @@
-import { useRef, useCallback, useEffect } from 'react';
+import { useRef, useCallback, useEffect, useState } from 'react';
 import Map, { NavigationControl } from 'react-map-gl/maplibre';
 import MapboxDraw from '@mapbox/mapbox-gl-draw';
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
@@ -9,8 +9,8 @@ interface FarmMapProps {
 }
 
 export default function FarmMap({ onPolygonDrawn }: FarmMapProps) {
-  const mapRef = useRef<any>();
-  const drawRef = useRef<MapboxDraw>();
+  const mapRef = useRef<any>(null);
+  const drawRef = useRef<MapboxDraw | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Center around Assam as a default
@@ -37,7 +37,7 @@ export default function FarmMap({ onPolygonDrawn }: FarmMapProps) {
     }
   };
 
-  const onUpdate = useCallback((e: any) => {
+  const onUpdate = useCallback((_e: any) => {
     if (!drawRef.current) return;
     const data = drawRef.current.getAll();
     if (data.features.length > 0) {
