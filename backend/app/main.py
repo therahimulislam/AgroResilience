@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import auth, farms, analysis, chat, voice
+from app.api import auth, farms, analysis, chat, voice, farmers, satellite, weather, soil, intelligence
 from app.core.config import settings
 
 app = FastAPI(
@@ -19,8 +19,13 @@ app.add_middleware(
 )
 
 app.include_router(auth.router, prefix=f"{settings.API_V1_STR}/auth", tags=["auth"])
+app.include_router(farmers.router, prefix=f"{settings.API_V1_STR}/farmers", tags=["farmers"])
 app.include_router(farms.router, prefix=f"{settings.API_V1_STR}/farms", tags=["farms"])
 app.include_router(analysis.router, prefix=f"{settings.API_V1_STR}/farms", tags=["analysis"])
+app.include_router(satellite.router, prefix=f"{settings.API_V1_STR}/farms", tags=["satellite"])
+app.include_router(weather.router, prefix=f"{settings.API_V1_STR}/farms", tags=["weather"])
+app.include_router(soil.router, prefix=f"{settings.API_V1_STR}/farms", tags=["soil"])
+app.include_router(intelligence.router, prefix=f"{settings.API_V1_STR}/farms", tags=["intelligence"])
 app.include_router(chat.router, prefix=f"{settings.API_V1_STR}/farms", tags=["chat"])
 app.include_router(voice.router, prefix=f"{settings.API_V1_STR}/farms", tags=["voice"])
 
