@@ -1,19 +1,64 @@
+import logging
 from uuid import uuid4
-
-import ee
 
 from app.schemas.intelligence import (
     AnalysisRequest,
     AnalysisResponse,
     CropSuitability,
     Recommendation,
+    SatelliteResult,
     SoilResult,
 )
 
-from app.services.satellite import get_satellite_data
 from app.services.weather import get_weather_data
 from app.services.risk_engine import calculate_risk
 from app.services.gemini_intelligence import generate_farm_advice
+
+logger = logging.getLogger(__name__)
+
+EE_AVAILABLE = False
+
+# Try to initialize Earth Engine at import time.
+# If credentials are missing we degrade gracefully — the rest of the
+# pipeline (weather, risk, Gemini) still runs fine.
+try:
+    import ee
+    ee.Initialize(project="agroresilience")
+    EE_AVAILABLE = True
+    logger.info("Google Earth Engine initialized successfully.")
+except Exception as _ee_err:
+    logger.warning(
+        "Google Earth Engine not available (%s). "
+        "Satellite NDVI will be marked as unavailable. "
+        "Run `earthengine authenticate` to enable it.",
+        _ee_err,
+    )
+
+
+def _get_satellite_data(latitude: float, longitude: float) -> SatelliteResult:
+    """
+    Attempt to fetch NDVI from Earth Engine.
+    Returns a result with ndvi=None if EE is unavailable.
+    """
+    if not EE_AVAILABLE:
+        return SatelliteResult(
+            ndvi=None,
+            ndvi_change_14d=None,
+            vegetation_health=None,
+            trend="unavailable",
+        )
+
+    try:
+        from app.services.satellite import get_satellite_data
+        return get_satellite_data(latitude=latitude, longitude=longitude)
+    except Exception as exc:
+        logger.warning("Satellite fetch failed: %s", exc)
+        return SatelliteResult(
+            ndvi=None,
+            ndvi_change_14d=None,
+            vegetation_health=None,
+            trend="unavailable",
+        )
 
 
 def analyze_farm(request: AnalysisRequest) -> AnalysisResponse:
@@ -21,49 +66,38 @@ def analyze_farm(request: AnalysisRequest) -> AnalysisResponse:
     Run the complete AgroResilience intelligence pipeline.
 
     Pipeline:
-    Satellite -> Weather -> Risk Engine -> Optional ML -> Gemini
+    Satellite (optional) -> Weather -> Risk Engine -> Optional ML -> Gemini
     """
 
     # --------------------------------------------------
-    # 1. Initialize Google Earth Engine
+    # 1. Satellite data (graceful fallback if EE missing)
     # --------------------------------------------------
-
-    ee.Initialize(project="agroresilience")
-
-    # --------------------------------------------------
-    # 2. Satellite data
-    # --------------------------------------------------
-
-    satellite = get_satellite_data(
+    satellite = _get_satellite_data(
         latitude=request.latitude,
         longitude=request.longitude,
     )
 
     # --------------------------------------------------
-    # 3. Weather data
+    # 2. Weather data (Open-Meteo — always available)
     # --------------------------------------------------
-
     weather = get_weather_data(
         latitude=request.latitude,
         longitude=request.longitude,
     )
 
     # --------------------------------------------------
-    # 4. Risk analysis
+    # 3. Risk analysis
     # --------------------------------------------------
-
     risk = calculate_risk(
         satellite=satellite,
         weather=weather,
     )
 
     # --------------------------------------------------
-    # 5. Soil data
+    # 4. Soil data
     # --------------------------------------------------
-    # We currently do not have a real soil provider.
-    # Therefore, we explicitly represent soil as unavailable.
+    # No real soil provider — represent as explicitly unavailable.
     # We DO NOT fabricate soil measurements.
-
     soil = SoilResult(
         ph=None,
         nitrogen=None,
@@ -75,16 +109,8 @@ def analyze_farm(request: AnalysisRequest) -> AnalysisResponse:
     )
 
     # --------------------------------------------------
-    # 6. Optional ML yield prediction
+    # 5. Optional ML yield prediction
     # --------------------------------------------------
-    #
-    # The ML model requires historical/agricultural inputs
-    # that are not automatically available from our live
-    # satellite/weather providers.
-    #
-    # Only run it when ALL required inputs were supplied.
-    #
-
     yield_prediction = None
 
     if (
@@ -93,40 +119,44 @@ def analyze_farm(request: AnalysisRequest) -> AnalysisResponse:
         and request.fertilizer is not None
         and request.pesticide is not None
     ):
-        from app.services.ml_predictor import predict_yield
-
-        yield_prediction = predict_yield(
-            crop=request.crop,
-            crop_year=request.crop_year,
-            season=request.season,
-            state=request.state,
-            area=request.area,
-            annual_rainfall=request.annual_rainfall,
-            fertilizer=request.fertilizer,
-            pesticide=request.pesticide,
-        )
+        try:
+            from app.services.ml_predictor import predict_yield
+            yield_prediction = predict_yield(
+                crop=request.crop,
+                crop_year=request.crop_year,
+                season=request.season,
+                state=request.state,
+                area=request.area,
+                annual_rainfall=request.annual_rainfall,
+                fertilizer=request.fertilizer,
+                pesticide=request.pesticide,
+            )
+        except Exception as exc:
+            logger.warning("ML yield prediction failed: %s", exc)
 
     # --------------------------------------------------
-    # 7. Gemini agricultural advice
+    # 6. Gemini agricultural advice
     # --------------------------------------------------
-
     location = (
         f"{request.state}, India "
         f"(lat: {request.latitude}, lon: {request.longitude})"
     )
 
-    ai_advice = generate_farm_advice(
-        crop=request.crop,
-        location=location,
-        satellite=satellite,
-        weather=weather,
-        risk=risk,
-    )
+    try:
+        ai_advice = generate_farm_advice(
+            crop=request.crop,
+            location=location,
+            satellite=satellite,
+            weather=weather,
+            risk=risk,
+        )
+    except Exception as exc:
+        logger.warning("Gemini advice generation failed: %s", exc)
+        ai_advice = "AI advice temporarily unavailable. Please try again."
 
     # --------------------------------------------------
-    # 8. Crop suitability
+    # 7. Crop suitability
     # --------------------------------------------------
-
     if risk.overall_risk >= 70:
         suitability = 40
         suitability_risk = "High"
@@ -147,9 +177,8 @@ def analyze_farm(request: AnalysisRequest) -> AnalysisResponse:
     ]
 
     # --------------------------------------------------
-    # 9. Deterministic recommendations
+    # 8. Deterministic recommendations
     # --------------------------------------------------
-
     recommendations = []
 
     if risk.water_risk >= 60:
@@ -186,10 +215,12 @@ def analyze_farm(request: AnalysisRequest) -> AnalysisResponse:
                 reason=(
                     "Satellite NDVI indicates moderate or elevated "
                     "vegetation stress."
+                    if EE_AVAILABLE else
+                    "Vegetation monitoring recommended — satellite data not yet configured."
                 ),
                 priority="High",
                 related_risk="crop_stress",
-                data_source="Google Earth Engine",
+                data_source="Google Earth Engine" if EE_AVAILABLE else "Open-Meteo (proxy)",
             )
         )
     else:
@@ -202,7 +233,7 @@ def analyze_farm(request: AnalysisRequest) -> AnalysisResponse:
                 ),
                 priority="Medium",
                 related_risk="crop_stress",
-                data_source="Google Earth Engine",
+                data_source="Google Earth Engine" if EE_AVAILABLE else "Open-Meteo (proxy)",
             )
         )
 
@@ -210,9 +241,7 @@ def analyze_farm(request: AnalysisRequest) -> AnalysisResponse:
         recommendations.append(
             Recommendation(
                 title="Prepare for changing weather conditions",
-                reason=(
-                    "The weather-based climate risk score is elevated."
-                ),
+                reason="The weather-based climate risk score is elevated.",
                 priority="High",
                 related_risk="climate_risk",
                 data_source="Open-Meteo",
@@ -233,9 +262,8 @@ def analyze_farm(request: AnalysisRequest) -> AnalysisResponse:
         )
 
     # --------------------------------------------------
-    # 10. Final response
+    # 9. Final response
     # --------------------------------------------------
-
     return AnalysisResponse(
         farm_id=str(uuid4()),
         satellite=satellite,

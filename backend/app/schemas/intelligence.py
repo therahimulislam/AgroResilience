@@ -21,10 +21,10 @@ class AnalysisRequest(BaseModel):
 
 
 class SatelliteResult(BaseModel):
-    ndvi: float
-    ndvi_change_14d: float
-    vegetation_health: int
-    trend: str
+    ndvi: Optional[float] = None
+    ndvi_change_14d: Optional[float] = None
+    vegetation_health: Optional[int] = None
+    trend: str = "unavailable"
 
 
 class WeatherResult(BaseModel):

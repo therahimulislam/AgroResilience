@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { analyzeFarm } from '../services/analysis';
+import { analyzeFarm, getCachedAnalysis, hasActiveAnalysis } from '../services/analysis';
 import { getFarm, type Farm } from '../services/farms';
 import { type AnalysisResult } from '../types/analysis';
 import MetricCard from '../components/dashboard/MetricCard';
@@ -30,21 +30,30 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (farmId) {
-      getFarm(farmId).then(setFarm).catch(console.error);
+      getFarm(farmId).then(f => {
+        setFarm(f);
+        
+        const cached = getCachedAnalysis(farmId);
+        if (cached) setResult(cached);
+        
+        if (hasActiveAnalysis(farmId)) {
+          executeAnalysis(f);
+        }
+      }).catch(console.error);
     }
   }, [farmId]);
 
-  const handleAnalyze = async () => {
-    if (!farm || !farmId) return;
+  const executeAnalysis = async (f: Farm) => {
+    if (!f || !farmId) return;
     setLoading(true);
     setError(null);
     try {
       const payload: any = {
-        latitude: farm.latitude || 26.1445,
-        longitude: farm.longitude || 91.7362,
-        crop: farm.current_crop || 'Rice',
+        latitude: f.latitude || 26.1445,
+        longitude: f.longitude || 91.7362,
+        crop: f.current_crop || 'Rice',
         state: regionState,
-        season: farm.season || 'Kharif'
+        season: f.season || 'Kharif'
       };
 
       if (advancedData.crop_year && advancedData.area && advancedData.annual_rainfall && advancedData.fertilizer && advancedData.pesticide) {
@@ -55,13 +64,17 @@ export default function DashboardPage() {
         payload.pesticide = Number(advancedData.pesticide);
       }
 
-      const data = await analyzeFarm(payload);
+      const data = await analyzeFarm(farmId, payload);
       setResult(data);
     } catch (err: any) {
       setError(err?.response?.data?.detail || 'Analysis failed. Please try again.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleAnalyze = () => {
+    if (farm) executeAnalysis(farm);
   };
 
   if (!farm) {

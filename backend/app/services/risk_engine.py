@@ -16,9 +16,13 @@ def calculate_risk(
     # Vegetation stress
     # -------------------------
 
-    if satellite.ndvi >= 0.6:
+    # ndvi may be None if Earth Engine is not configured
+    ndvi = satellite.ndvi
+    if ndvi is None:
+        crop_stress = 50   # neutral/unknown — not fabricated
+    elif ndvi >= 0.6:
         crop_stress = 20
-    elif satellite.ndvi >= 0.4:
+    elif ndvi >= 0.4:
         crop_stress = 50
     else:
         crop_stress = 80
