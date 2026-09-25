@@ -288,7 +288,7 @@ export default function LandingPage() {
             </div>
             <span className="font-bold text-white text-lg">AgroResilience</span>
           </div>
-          <p className="text-sm">© 2025 AgroResilience · Built for the Hack2Skill BRICS Agriculture Challenge</p>
+          <p className="text-sm">© 2026 AgroResilience · Built for the Hack2Skill BRICS Agriculture Challenge</p>
           <div className="flex items-center gap-1 text-sm">
             <span>Powered by</span>
             <span className="text-emerald-400 font-semibold">Google Gemini & Earth Engine</span>
