@@ -81,18 +81,45 @@ export default function VoiceInterface() {
     setIsListening(false);
   };
 
-  const handleVoiceQuery = async (query: string) => {
+  const handleVoiceQuery = (query: string) => {
     if (!farmId) return;
     setLoading(true);
-    try {
-      const data = await sendVoiceQuery(farmId, query, selectedLang.code);
-      setAiResponse(data.answer);
-      speakResponse(data.answer);
-    } catch {
-      setError('Could not reach the AI service. Please try again.');
-    } finally {
+    setAiResponse('');
+    setError('');
+
+    let baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
+    let wsUrl = baseUrl.replace(/^http/, 'ws') + `/farms/${farmId}/voice/stream`;
+    
+    const ws = new WebSocket(wsUrl);
+    
+    ws.onopen = () => {
       setLoading(false);
-    }
+      setSpeaking(true); // Treat streaming phase as speaking visually
+      ws.send(JSON.stringify({ transcript: query, language: selectedLang.code }));
+    };
+
+    let fullResponse = '';
+
+    ws.onmessage = (event) => {
+      if (event.data === '[DONE]') {
+        ws.close();
+        speakResponse(fullResponse);
+      } else {
+        fullResponse += event.data;
+        setAiResponse(fullResponse);
+      }
+    };
+
+    ws.onerror = () => {
+      setError('WebSocket connection error.');
+      setLoading(false);
+      setSpeaking(false);
+    };
+    
+    ws.onclose = () => {
+      setLoading(false);
+      if (!fullResponse) setSpeaking(false);
+    };
   };
 
   const speakResponse = (text: string) => {
@@ -106,25 +133,40 @@ export default function VoiceInterface() {
     window.speechSynthesis.speak(utter);
   };
 
-  return (
-    <div className="flex flex-col h-full bg-gray-50 rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
+  // Determine the orb style based on state
+  let orbClass = "w-32 h-32 md:w-48 md:h-48 transition-all duration-700 ease-in-out flex items-center justify-center cursor-pointer ";
+  let orbContainerClass = "relative flex items-center justify-center animate-float ";
+  
+  if (loading) {
+    // Loading state: glowing blue blob rotating
+    orbClass += "bg-gradient-to-tr from-blue-500 via-indigo-400 to-purple-500 scale-100 shadow-[0_0_60px_rgba(99,102,241,0.5)] animate-morph animate-spin-slow";
+  } else if (isListening) {
+    // Listening state: dynamic red/pink glowing morphing blob
+    orbClass += "bg-gradient-to-tr from-rose-500 via-pink-500 to-orange-400 scale-110 shadow-[0_0_80px_rgba(244,63,94,0.7)] animate-morph";
+  } else if (speaking) {
+    // Speaking state: teal/emerald/cyan breathing blob
+    orbClass += "bg-gradient-to-tr from-teal-400 via-emerald-400 to-cyan-500 scale-105 shadow-[0_0_70px_rgba(16,185,129,0.6)] animate-morph animate-pulse";
+  } else {
+    // Idle state: subtle dark fluid blob
+    orbClass += "bg-gradient-to-tr from-gray-800 to-gray-700 hover:from-gray-700 hover:to-gray-600 hover:scale-105 shadow-[0_0_40px_rgba(0,0,0,0.2)] animate-morph";
+  }
 
-      {/* Header */}
-      <div className="bg-white px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-secondary/10 rounded-xl flex items-center justify-center">
-            <Radio className="w-5 h-5 text-secondary" />
+  return (
+    <div className="flex flex-col h-[600px] max-h-[80vh] bg-[#f9fafb] rounded-3xl overflow-hidden border border-gray-100 shadow-sm relative">
+      
+      {/* Top Header */}
+      <div className="absolute top-0 left-0 right-0 p-6 flex justify-between items-center z-10">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center">
+            <Radio className="w-4 h-4 text-gray-600" />
           </div>
-          <div>
-            <p className="font-semibold text-gray-900">Voice Assistant</p>
-            <p className="text-xs text-gray-400">Speak to ask about your farm</p>
-          </div>
+          <span className="font-semibold text-gray-700">Voice Assistant</span>
         </div>
-        {/* Language Selector */}
+        
         <select
           value={selectedLang.code}
           onChange={(e) => setSelectedLang(LANGUAGES.find(l => l.code === e.target.value) || LANGUAGES[0])}
-          className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 outline-none focus:ring-2 focus:ring-primary"
+          className="text-sm border-0 bg-white/80 backdrop-blur shadow-sm rounded-full px-4 py-2 outline-none cursor-pointer text-gray-700 font-medium hover:bg-white transition-colors"
         >
           {LANGUAGES.map(l => (
             <option key={l.code} value={l.code}>{l.label}</option>
@@ -133,68 +175,59 @@ export default function VoiceInterface() {
       </div>
 
       {/* Main Interaction Area */}
-      <div className="flex-1 flex flex-col items-center justify-center p-6 gap-6">
-
-        {/* Mic Button */}
-        <div className="relative">
+      <div className="flex-1 flex flex-col items-center justify-center relative px-6">
+        
+        {/* Dynamic Orb */}
+        <div className={orbContainerClass} onClick={loading || speaking ? undefined : (isListening ? stopListening : startListening)}>
+          {/* Ripples when listening */}
           {isListening && (
-            <span className="absolute inset-0 rounded-full bg-red-400 opacity-30 animate-ping" />
+            <>
+              <div className="absolute w-40 h-40 md:w-60 md:h-60 rounded-full bg-rose-400/20 animate-ping" style={{ animationDuration: '2s' }} />
+              <div className="absolute w-48 h-48 md:w-72 md:h-72 rounded-full bg-rose-400/10 animate-ping" style={{ animationDuration: '3s' }} />
+            </>
           )}
-          <button
-            onClick={isListening ? stopListening : startListening}
-            disabled={loading}
-            className={`relative w-24 h-24 rounded-full flex items-center justify-center transition-all shadow-lg ${
-              isListening
-                ? 'bg-red-500 hover:bg-red-600 scale-110'
-                : 'bg-primary hover:bg-primary-dark'
-            } disabled:opacity-50`}
-          >
-            {isListening
-              ? <MicOff className="w-10 h-10 text-white" />
-              : <Mic className="w-10 h-10 text-white" />
-            }
-          </button>
+          
+          <div className={orbClass}>
+            {loading ? (
+              <Loader2 className="w-10 h-10 text-white animate-spin" />
+            ) : isListening ? (
+              <MicOff className="w-12 h-12 text-white/90" />
+            ) : speaking ? (
+              <Volume2 className="w-12 h-12 text-white/90 animate-bounce" />
+            ) : (
+              <Mic className="w-12 h-12 text-white/90" />
+            )}
+          </div>
         </div>
 
-        <p className="text-sm text-gray-500 font-medium">
-          {isListening ? 'Listening... tap to stop' : 'Tap to speak'}
-        </p>
+        {/* Status Text */}
+        <div className="absolute bottom-24 left-0 right-0 text-center px-8">
+          <p className="text-gray-400 font-medium tracking-wide">
+            {loading ? 'Thinking...' : isListening ? 'Listening...' : speaking ? 'Speaking...' : 'Tap to start speaking'}
+          </p>
+        </div>
 
-        {/* Transcript */}
-        {transcript && (
-          <div className="w-full max-w-sm bg-white rounded-xl border border-gray-100 shadow-sm p-4">
-            <p className="text-xs text-gray-400 mb-1 font-medium uppercase tracking-wide">You said</p>
-            <p className="text-sm text-gray-800 italic">"{transcript}"</p>
-          </div>
-        )}
-
-        {/* Loading */}
-        {loading && (
-          <div className="flex items-center gap-2 text-primary">
-            <Loader2 className="w-5 h-5 animate-spin" />
-            <span className="text-sm font-medium">Getting AI response...</span>
-          </div>
-        )}
-
-        {/* AI Response */}
-        {aiResponse && !loading && (
-          <div className="w-full max-w-sm bg-white rounded-xl border border-gray-100 shadow-sm p-4 space-y-2">
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">AgroResilience AI</p>
-              <button
-                onClick={() => speakResponse(aiResponse)}
-                className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-lg ${speaking ? 'bg-primary/10 text-primary' : 'text-gray-400 hover:text-primary'}`}
-              >
-                <Volume2 className="w-3.5 h-3.5" />
-                {speaking ? 'Speaking...' : 'Replay'}
-              </button>
+        {/* Transcripts */}
+        {(transcript || aiResponse) && (
+          <div className="absolute bottom-8 left-0 right-0 px-8 max-w-2xl mx-auto w-full">
+            <div className="bg-white/90 backdrop-blur-md rounded-2xl shadow-lg border border-white/20 p-5 overflow-hidden transition-all">
+              {transcript && !aiResponse && (
+                <p className="text-gray-800 text-lg md:text-xl font-medium text-center animate-pulse">"{transcript}"</p>
+              )}
+              {aiResponse && (
+                <div className="text-center">
+                  <p className="text-gray-800 font-medium text-sm md:text-base leading-relaxed line-clamp-3">{aiResponse}</p>
+                </div>
+              )}
             </div>
-            <p className="text-sm text-gray-800 leading-relaxed">{aiResponse}</p>
           </div>
         )}
 
+        {/* Error overlay */}
         {error && (
-          <p className="text-sm text-red-500 text-center">{error}</p>
+          <div className="absolute top-20 left-1/2 -translate-x-1/2 bg-red-100 text-red-600 px-4 py-2 rounded-lg text-sm font-medium shadow-sm whitespace-nowrap z-50">
+            {error}
+          </div>
         )}
       </div>
     </div>

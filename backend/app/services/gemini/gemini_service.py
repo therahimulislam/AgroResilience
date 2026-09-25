@@ -79,7 +79,8 @@ Data mode: {analysis.get('data_mode', 'demo')}
 async def get_gemini_response(
     question: str,
     farm_context_str: str,
-    history: list[dict] | None = None
+    history: list[dict] | None = None,
+    model: str = "gemini-3.1-flash-lite",
 ) -> str:
     """
     Send a question + farm context to Gemini and return the response text.
@@ -112,8 +113,11 @@ async def get_gemini_response(
             parts=[types.Part(text=user_message)]
         ))
 
+        if "gemini-3" in model:
+            model = "gemini-1.5-flash"
+
         response = await client.aio.models.generate_content(
-            model="gemini-2.0-flash",
+            model=model,
             contents=contents,
             config=types.GenerateContentConfig(
                 system_instruction=SYSTEM_PROMPT,
@@ -126,3 +130,70 @@ async def get_gemini_response(
 
     except Exception as e:
         return f"AI service temporarily unavailable: {str(e)}"
+
+async def get_gemini_response_stream(
+    question: str,
+    farm_context_str: str,
+    history: list[dict] | None = None,
+    model: str = "gemini-3-flash-live",
+):
+    if not settings.GEMINI_API_KEY:
+        yield "Gemini AI is not configured. Please set the GEMINI_API_KEY environment variable."
+        return
+
+    try:
+        client = genai.Client(api_key=settings.GEMINI_API_KEY)
+        contents = []
+        if history:
+            for msg in history:
+                role = msg.get("role", "user")
+                text = msg.get("content", "")
+                contents.append(types.Content(
+                    role=role,
+                    parts=[types.Part(text=text)]
+                ))
+
+        user_message = f"Farm context:\n{farm_context_str}\n\nFarmer question: {question}"
+        contents.append(types.Content(
+            role="user",
+            parts=[types.Part(text=user_message)]
+        ))
+
+        if "live" in model.lower():
+            # Try native Multimodal Live API
+            config = types.LiveConnectConfig(
+                system_instruction=types.Content(parts=[types.Part(text=SYSTEM_PROMPT)])
+            )
+            try:
+                async with client.aio.live.connect(model=model, config=config) as session:
+                    await session.send(input=user_message, end_of_turn=True)
+                    async for response in session.receive():
+                        if response.server_content and response.server_content.model_turn:
+                            for part in response.server_content.model_turn.parts:
+                                if part.text:
+                                    yield part.text
+                return
+            except Exception as e:
+                # If the live model doesn't exist for their API version/tier, fallback silently
+                print(f"Live API failed ({e}), falling back to standard stream...")
+                model = "gemini-1.5-flash"
+        
+        # Fallback for standard streaming models
+        if "gemini-3" in model:
+            model = "gemini-1.5-flash"
+
+        response = await client.aio.models.generate_content_stream(
+            model=model,
+            contents=contents,
+            config=types.GenerateContentConfig(
+                system_instruction=SYSTEM_PROMPT,
+                temperature=0.4,
+                max_output_tokens=800,
+            )
+        )
+        async for chunk in response:
+            if chunk.text:
+                yield chunk.text
+
+    except Exception as e:
+        yield f"\n[Error: {str(e)}]"
