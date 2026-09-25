@@ -1,26 +1,61 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { analyzeFarm } from '../services/analysis';
+import { getFarm, type Farm } from '../services/farms';
 import { type AnalysisResult } from '../types/analysis';
 import MetricCard from '../components/dashboard/MetricCard';
 import RiskIndex from '../components/risk/RiskIndex';
 import CropSuitabilityPanel from '../components/crops/CropSuitabilityPanel';
 import RecommendationsPanel from '../components/recommendations/RecommendationsPanel';
 import WeatherSoilPanel from '../components/dashboard/WeatherSoilPanel';
-import { Leaf, MapPin, Activity, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Leaf, MapPin, Activity, RefreshCw, AlertTriangle, Cpu, TrendingUp } from 'lucide-react';
 
 export default function DashboardPage() {
   const { farmId } = useParams<{ farmId: string }>();
+  const [farm, setFarm] = useState<Farm | null>(null);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
+
+  // Form states
+  const [regionState, setRegionState] = useState('Assam');
+  const [advancedData, setAdvancedData] = useState({
+    crop_year: '',
+    area: '',
+    annual_rainfall: '',
+    fertilizer: '',
+    pesticide: '',
+  });
+
+  useEffect(() => {
+    if (farmId) {
+      getFarm(farmId).then(setFarm).catch(console.error);
+    }
+  }, [farmId]);
 
   const handleAnalyze = async () => {
-    if (!farmId) return;
+    if (!farm || !farmId) return;
     setLoading(true);
     setError(null);
     try {
-      const data = await analyzeFarm(farmId);
+      const payload: any = {
+        latitude: farm.latitude || 26.1445,
+        longitude: farm.longitude || 91.7362,
+        crop: farm.current_crop || 'Rice',
+        state: regionState,
+        season: farm.season || 'Kharif'
+      };
+
+      if (advancedData.crop_year && advancedData.area && advancedData.annual_rainfall && advancedData.fertilizer && advancedData.pesticide) {
+        payload.crop_year = Number(advancedData.crop_year);
+        payload.area = Number(advancedData.area);
+        payload.annual_rainfall = Number(advancedData.annual_rainfall);
+        payload.fertilizer = Number(advancedData.fertilizer);
+        payload.pesticide = Number(advancedData.pesticide);
+      }
+
+      const data = await analyzeFarm(payload);
       setResult(data);
     } catch (err: any) {
       setError(err?.response?.data?.detail || 'Analysis failed. Please try again.');
@@ -29,34 +64,85 @@ export default function DashboardPage() {
     }
   };
 
+  if (!farm) {
+    return <div className="min-h-screen bg-gray-50 flex items-center justify-center font-medium text-gray-500">Loading farm...</div>;
+  }
+
   if (!result) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center space-y-5">
-          <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto">
-            <Activity className="w-8 h-8 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Farm Analysis</h1>
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-sm border border-gray-100 p-8 space-y-5">
+          <div className="text-center">
+            <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Activity className="w-8 h-8 text-primary" />
+            </div>
+            <h1 className="text-2xl font-bold text-gray-900">Analyze {farm.name}</h1>
             <p className="text-gray-500 mt-2 text-sm">
-              Tap below to analyze your farm using satellite, weather, soil and climate intelligence.
+              We'll fetch live satellite vegetation and weather data. Please confirm the farm's state below.
             </p>
           </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
+            <input 
+              type="text" 
+              className="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none focus:border-primary"
+              value={regionState}
+              onChange={e => setRegionState(e.target.value)}
+            />
+          </div>
+
+          <div className="border border-gray-200 rounded-lg p-4 bg-gray-50/50">
+            <button 
+              type="button" 
+              onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}
+              className="w-full flex justify-between items-center text-sm font-semibold text-gray-700"
+            >
+              Optional: Historical ML Yield Inputs
+              <span className="text-lg leading-none">{isAdvancedOpen ? '-' : '+'}</span>
+            </button>
+            {isAdvancedOpen && (
+              <div className="grid grid-cols-2 gap-3 mt-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Crop Year</label>
+                  <input type="number" className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm outline-none" value={advancedData.crop_year} onChange={e => setAdvancedData({...advancedData, crop_year: e.target.value})} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Area</label>
+                  <input type="number" className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm outline-none" value={advancedData.area} onChange={e => setAdvancedData({...advancedData, area: e.target.value})} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Annual Rainfall</label>
+                  <input type="number" className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm outline-none" value={advancedData.annual_rainfall} onChange={e => setAdvancedData({...advancedData, annual_rainfall: e.target.value})} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Fertilizer</label>
+                  <input type="number" className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm outline-none" value={advancedData.fertilizer} onChange={e => setAdvancedData({...advancedData, fertilizer: e.target.value})} />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Pesticide</label>
+                  <input type="number" className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm outline-none" value={advancedData.pesticide} onChange={e => setAdvancedData({...advancedData, pesticide: e.target.value})} />
+                </div>
+              </div>
+            )}
+          </div>
+
           {error && (
             <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl p-3 text-left">
               <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
               <p className="text-sm text-red-700">{error}</p>
             </div>
           )}
+
           <button
             onClick={handleAnalyze}
             disabled={loading}
             className="w-full py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary-dark transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
           >
             {loading ? (
-              <><RefreshCw className="w-4 h-4 animate-spin" /> Analyzing farm...</>
+              <><RefreshCw className="w-4 h-4 animate-spin" /> Analyzing...</>
             ) : (
-              <><Activity className="w-4 h-4" /> Analyze My Farm</>
+              <><Activity className="w-4 h-4" /> Analyze Farm</>
             )}
           </button>
         </div>
@@ -74,29 +160,22 @@ export default function DashboardPage() {
               <Leaf className="w-6 h-6 text-primary" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-gray-900">{result.farm.name}</h1>
+              <h1 className="text-xl font-bold text-gray-900">{farm.name}</h1>
               <div className="flex items-center gap-3 text-sm text-gray-500 mt-0.5">
-                <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {result.farm.area_acres?.toFixed(1)} acres</span>
+                <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {farm.area_acres?.toFixed(1)} acres</span>
                 <span>·</span>
-                <span>{result.farm.current_crop}</span>
+                <span>{farm.current_crop}</span>
                 <span>·</span>
-                <span>{result.farm.season} season</span>
+                <span>{farm.season} season</span>
               </div>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            {result.data_mode === 'demo' && (
-              <span className="text-xs bg-amber-50 text-amber-700 border border-amber-200 px-2.5 py-1 rounded-full font-medium">
-                Demo Data
-              </span>
-            )}
             <button
-              onClick={handleAnalyze}
-              disabled={loading}
-              className="flex items-center gap-1.5 px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-60"
+              onClick={() => setResult(null)}
+              className="flex items-center gap-1.5 px-4 py-2 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:border-primary hover:text-primary transition-colors"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-              Re-analyze
+              Back to Analysis
             </button>
           </div>
         </div>
@@ -116,14 +195,49 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        {/* New Row: AI Advice and ML Signal */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Cpu className="w-5 h-5 text-indigo-500" />
+              <h3 className="text-lg font-bold text-gray-900">Gemini AI Advisory</h3>
+            </div>
+            {result.ai_advice ? (
+              <div className="text-gray-600 text-sm leading-relaxed whitespace-pre-wrap">
+                {result.ai_advice}
+              </div>
+            ) : (
+              <p className="text-gray-500 text-sm">No AI advisory available.</p>
+            )}
+          </div>
+
+          <div className="lg:col-span-1">
+            {result.yield_prediction !== null && result.yield_prediction !== undefined ? (
+              <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl border border-emerald-100 shadow-sm p-6 flex flex-col justify-center items-center text-center h-full space-y-3">
+                <TrendingUp className="w-8 h-8 text-emerald-600" />
+                <h3 className="text-sm font-semibold text-emerald-800 uppercase tracking-wide">Historical Yield Signal</h3>
+                <p className="text-4xl font-black text-emerald-600">{result.yield_prediction.toFixed(2)}</p>
+                <p className="text-xs text-emerald-700 mt-2 px-2">
+                  Based on historical agricultural data and the optional inputs provided.
+                </p>
+              </div>
+            ) : (
+              <div className="bg-gray-50 rounded-2xl border border-gray-100 shadow-sm p-6 flex flex-col justify-center items-center text-center h-full opacity-70">
+                <TrendingUp className="w-8 h-8 text-gray-400" />
+                <h3 className="text-sm font-semibold text-gray-500 mt-2">Historical Yield Signal</h3>
+                <p className="text-xs text-gray-400 mt-2 px-2">
+                  Not available. Provide advanced ML inputs to see the historical yield estimate.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Main Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Risk Index — full left column */}
           <div className="lg:col-span-1">
             <RiskIndex risk={result.risk} />
           </div>
-
-          {/* Intelligence Panel — spans 2 columns */}
           <div className="lg:col-span-2">
             <WeatherSoilPanel data={result} />
           </div>
@@ -135,10 +249,6 @@ export default function DashboardPage() {
           <RecommendationsPanel recommendations={result.recommendations} />
         </div>
 
-        {/* Analysis Timestamp */}
-        <p className="text-center text-xs text-gray-400 pb-4">
-          Last analyzed: {new Date(result.analyzed_at).toLocaleString()} · AgroResilience Farm Risk Index v1.0
-        </p>
       </div>
     </div>
   );

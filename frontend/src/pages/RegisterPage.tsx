@@ -56,7 +56,7 @@ export default function RegisterPage() {
               <input
                 required
                 type="text"
-                placeholder="e.g. Rahimul Islam"
+                placeholder="John Doe"
                 value={form.name}
                 onChange={e => setForm({ ...form, name: e.target.value })}
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-sm transition-shadow"

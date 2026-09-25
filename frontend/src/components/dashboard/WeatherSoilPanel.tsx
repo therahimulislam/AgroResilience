@@ -18,19 +18,10 @@ const ndviTrendData = [
   { day: 'Today', ndvi: 0.58 },
 ];
 
-function NutrientBadge({ label, level }: { label: string; level: string }) {
-  const color = level === 'low' ? 'bg-red-100 text-red-700' : level === 'medium' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700';
-  return (
-    <div className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
-      <span className="text-sm text-gray-600">{label}</span>
-      <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full capitalize ${color}`}>{level}</span>
-    </div>
-  );
-}
 
 export default function WeatherSoilPanel({ data }: WeatherSoilPanelProps) {
   const [activeTab, setActiveTab] = useState<'satellite' | 'weather' | 'soil'>('satellite');
-  const { satellite, weather, soil } = data;
+  const { satellite, weather } = data;
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-5">
@@ -55,14 +46,10 @@ export default function WeatherSoilPanel({ data }: WeatherSoilPanelProps) {
       {/* Satellite Tab */}
       {activeTab === 'satellite' && (
         <div className="space-y-5">
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <div className="bg-gray-50 rounded-xl p-3 text-center">
               <p className="text-2xl font-black text-primary">{satellite.ndvi}</p>
               <p className="text-xs text-gray-500 mt-1">NDVI</p>
-            </div>
-            <div className="bg-gray-50 rounded-xl p-3 text-center">
-              <p className="text-2xl font-black text-red-500">{satellite.ndvi_change_14d}%</p>
-              <p className="text-xs text-gray-500 mt-1">14d Change</p>
             </div>
             <div className="bg-gray-50 rounded-xl p-3 text-center">
               <p className="text-2xl font-black text-amber-500 capitalize">{satellite.trend}</p>
@@ -119,22 +106,10 @@ export default function WeatherSoilPanel({ data }: WeatherSoilPanelProps) {
 
       {/* Soil Tab */}
       {activeTab === 'soil' && (
-        <div className="space-y-1">
-          <div className="grid grid-cols-2 gap-3 mb-4">
-            <div className="bg-gray-50 rounded-xl p-3 text-center">
-              <p className="text-2xl font-black text-gray-800">{soil.ph}</p>
-              <p className="text-xs text-gray-500 mt-1">Soil pH</p>
-            </div>
-            <div className="bg-gray-50 rounded-xl p-3 text-center">
-              <p className="text-2xl font-black text-gray-800">{soil.moisture}%</p>
-              <p className="text-xs text-gray-500 mt-1">Moisture</p>
-            </div>
-          </div>
-          <p className="text-sm font-semibold text-gray-600 mb-2">Nutrients</p>
-          <NutrientBadge label="Nitrogen" level={soil.nitrogen} />
-          <NutrientBadge label="Phosphorus" level={soil.phosphorus} />
-          <NutrientBadge label="Potassium" level={soil.potassium} />
-          <NutrientBadge label="Organic Carbon" level={soil.organic_carbon} />
+        <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+          <Layers className="w-12 h-12 text-gray-300 mb-4" />
+          <p className="text-gray-900 font-medium">Soil data</p>
+          <p className="text-sm text-gray-500 mt-1">Not available for this analysis.</p>
         </div>
       )}
     </div>

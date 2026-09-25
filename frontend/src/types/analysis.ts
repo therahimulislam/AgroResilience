@@ -48,20 +48,15 @@ export interface Recommendation {
 }
 
 export interface AnalysisResult {
-  farm: {
-    id: string;
-    name: string;
-    area_acres?: number;
-    current_crop?: string;
-    season?: string;
-    irrigation_type?: string;
-  };
+  farm_id: string;
   satellite: SatelliteData;
   weather: WeatherData;
   soil: SoilData;
   risk: RiskData;
   crop_suitability: CropSuitability[];
   recommendations: Recommendation[];
-  data_mode: string;
-  analyzed_at: string;
+  yield_prediction?: number;
+  ai_advice?: string;
+  data_mode?: string;
+  analyzed_at?: string;
 }
