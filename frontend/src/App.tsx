@@ -11,7 +11,7 @@ import { logout } from './services/auth';
 import { useState } from 'react';
 
 function Navbar() {
-  const location = useLocation();
+  useLocation(); // Force re-render on route change
   const isLoggedIn = !!localStorage.getItem('token');
   const [mobileOpen, setMobileOpen] = useState(false);
 
