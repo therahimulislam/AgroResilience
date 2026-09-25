@@ -13,17 +13,17 @@ export interface Farm {
 }
 
 export const getFarms = async () => {
-  const response = await api.get('/farms');
+  const response = await api.get('/farms/');
   return response.data;
 };
 
 export const getFarm = async (id: string) => {
-  const response = await api.get(`/farms/${id}`);
+  const response = await api.get(`/farms/${id}/`);
   return response.data;
 };
 
 export const createFarm = async (data: Partial<Farm> & { boundary_geojson?: string }) => {
-  const response = await api.post('/farms', data);
+  const response = await api.post('/farms/', data);
   return response.data;
 };
 

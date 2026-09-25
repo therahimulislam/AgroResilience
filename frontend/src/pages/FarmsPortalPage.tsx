@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { getFarms, deleteFarm, type Farm } from '../services/farms';
 import { getMe } from '../services/auth';
 import {
@@ -35,6 +35,7 @@ function FarmCard({ farm, onDelete }: { farm: Farm; onDelete: (id: string) => vo
     Rice: '🌾', Wheat: '🌿', Maize: '🌽', Cotton: '☁️', Sugarcane: '🎋'
   };
   const emoji = cropEmoji[farm.current_crop || ''] || '🌱';
+  const navigate = useNavigate();
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -50,7 +51,10 @@ function FarmCard({ farm, onDelete }: { farm: Farm; onDelete: (id: string) => vo
   };
 
   return (
-    <div className="group bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 overflow-hidden">
+    <div 
+      onClick={() => navigate(`/farms/${farm.id}/dashboard`)}
+      className="group bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 overflow-hidden cursor-pointer"
+    >
       {/* Card gradient header */}
       <div className="h-3 bg-gradient-to-r from-emerald-400 to-teal-500" />
 
@@ -67,7 +71,7 @@ function FarmCard({ farm, onDelete }: { farm: Farm; onDelete: (id: string) => vo
             </div>
           </div>
           <button
-            onClick={handleDelete}
+            onClick={(e) => { e.stopPropagation(); handleDelete(e); }}
             disabled={deleting}
             className="p-2 rounded-xl text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
           >
@@ -105,6 +109,7 @@ function FarmCard({ farm, onDelete }: { farm: Farm; onDelete: (id: string) => vo
         <div className="flex gap-2">
           <Link
             to={`/farms/${farm.id}/dashboard`}
+            onClick={(e) => e.stopPropagation()}
             className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-semibold rounded-xl text-sm hover:shadow-md hover:shadow-emerald-200 transition-all"
           >
             <Activity className="w-4 h-4" />
@@ -112,11 +117,15 @@ function FarmCard({ farm, onDelete }: { farm: Farm; onDelete: (id: string) => vo
           </Link>
           <Link
             to={`/farms/${farm.id}/assistant`}
+            onClick={(e) => e.stopPropagation()}
             className="flex items-center justify-center gap-2 px-3 py-2.5 bg-gray-50 border border-gray-200 text-gray-600 font-medium rounded-xl text-sm hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50 transition-all"
           >
             <MessageSquare className="w-4 h-4" />
           </Link>
-          <button className="flex items-center justify-center gap-2 px-3 py-2.5 bg-gray-50 border border-gray-200 text-gray-600 font-medium rounded-xl text-sm hover:border-amber-300 hover:text-amber-600 hover:bg-amber-50 transition-all">
+          <button 
+            onClick={(e) => e.stopPropagation()}
+            className="flex items-center justify-center gap-2 px-3 py-2.5 bg-gray-50 border border-gray-200 text-gray-600 font-medium rounded-xl text-sm hover:border-amber-300 hover:text-amber-600 hover:bg-amber-50 transition-all"
+          >
             <TrendingUp className="w-4 h-4" />
           </button>
         </div>

@@ -3,6 +3,7 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy.orm import joinedload
 
 from app.core.config import settings
 from app.db.database import get_db
@@ -27,7 +28,11 @@ async def get_current_user(
             detail="Could not validate credentials",
         )
     
-    result = await db.execute(select(User).filter(User.id == token_data.sub))
+    result = await db.execute(
+        select(User)
+        .options(joinedload(User.farmer))
+        .filter(User.id == token_data.sub)
+    )
     user = result.scalars().first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
