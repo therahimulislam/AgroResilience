@@ -3,16 +3,20 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api import auth, farms, analysis, chat, voice, farmers, satellite, weather, soil, intelligence
 from app.core.config import settings
 
+from app.schemas.intelligence import AnalysisRequest, AnalysisResponse
+from app.services.intelligence import analyze_farm
+
+
 app = FastAPI(
     title="AgroResilience API",
     description="Backend for the AI-powered climate-resilient farming platform.",
     version="1.0.0"
 )
 
-# Configure CORS
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # For development; restrict in production
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -33,6 +37,15 @@ app.include_router(voice.router, prefix=f"{settings.API_V1_STR}/farms", tags=["v
 def read_root():
     return {"message": "Welcome to the AgroResilience API"}
 
+
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
+
+
+@app.post(
+    "/api/intelligence/analyze",
+    response_model=AnalysisResponse
+)
+def analyze(request: AnalysisRequest):
+    return analyze_farm(request)
