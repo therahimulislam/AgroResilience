@@ -19,7 +19,8 @@ export default function RegisterPage() {
       // Auto-login after register
       const tokenData = await login(form.email, form.password);
       localStorage.setItem('token', tokenData.access_token);
-      navigate('/farms/new');
+      navigate('/farms');
+
     } catch (err: any) {
       setError(err?.response?.data?.detail || 'Registration failed. Please try again.');
     } finally {

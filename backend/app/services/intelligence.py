@@ -13,7 +13,7 @@ from app.schemas.intelligence import (
 from app.services.satellite import get_satellite_data
 from app.services.weather import get_weather_data
 from app.services.risk_engine import calculate_risk
-from app.services.gemini import generate_farm_advice
+from app.services.gemini_intelligence import generate_farm_advice
 
 
 def analyze_farm(request: AnalysisRequest) -> AnalysisResponse:

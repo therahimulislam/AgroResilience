@@ -17,7 +17,7 @@ export default function LoginPage() {
     try {
       const tokenData = await login(form.email, form.password);
       localStorage.setItem('token', tokenData.access_token);
-      navigate('/farms/new');
+      navigate('/farms');
     } catch (err: any) {
       setError(err?.response?.data?.detail || 'Invalid email or password.');
     } finally {
