@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
 import CreateFarmPage from './pages/CreateFarmPage';
 import DashboardPage from './pages/DashboardPage';
 import AssistantPage from './pages/AssistantPage';
@@ -11,6 +11,7 @@ import { logout } from './services/auth';
 import { useState } from 'react';
 
 function Navbar() {
+  const location = useLocation();
   const isLoggedIn = !!localStorage.getItem('token');
   const [mobileOpen, setMobileOpen] = useState(false);
 
