@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { sendVoiceQuery } from '../../services/chat';
 import { Mic, MicOff, Volume2, Loader2, Radio } from 'lucide-react';
 
 const LANGUAGES = [
