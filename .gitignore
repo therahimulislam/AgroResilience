@@ -16,6 +16,8 @@ backend/__pycache__/
 backend/*.py[cod]
 backend/*$py.class
 backend/.pytest_cache/
+backend/models/*.joblib
+backend/data/
 
 #Enviroment Variables / secret
 .env
