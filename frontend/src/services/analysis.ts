@@ -7,7 +7,7 @@ export const analyzeFarm = (farmId: string, data?: any) => {
     return analysisPromises.get(farmId)!;
   }
 
-  const promise = api.post(`/farms/${farmId}/analyze`)
+  const promise = api.post(`/farms/${farmId}/analyze`, data)
     .then(res => {
       localStorage.setItem(`analysis_${farmId}`, JSON.stringify(res.data));
       analysisPromises.delete(farmId);
