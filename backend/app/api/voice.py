@@ -41,11 +41,11 @@ async def voice_query(
         raise HTTPException(status_code=403, detail="Not authorized")
 
     # Build intelligence context
-    satellite = get_satellite_provider().get_satellite_data(farm_id)
-    weather = get_weather_provider().get_weather_data(farm_id)
-    soil = get_soil_provider().get_soil_data(farm_id)
-    risk = get_risk_provider().get_risk_assessment(farm_id)
-    recommendations = get_recommendation_provider().get_recommendations(farm_id)
+    satellite = get_satellite_provider().get_satellite_data(farm_id, farm=farm)
+    weather = get_weather_provider().get_weather_data(farm_id, farm=farm)
+    soil = get_soil_provider().get_soil_data(farm_id, farm=farm)
+    risk = get_risk_provider().get_risk_assessment(farm_id, farm=farm)
+    recommendations = get_recommendation_provider().get_recommendations(farm_id, farm=farm)
 
     analysis_payload = {
         "farm": {
@@ -72,7 +72,7 @@ async def voice_query(
     answer = await get_gemini_response(
         question=enriched_question,
         farm_context_str=farm_context_str,
-        model="gemini-3-flash-live",
+        model="gemini-3.1-flash-lite",
     )
 
     return VoiceResponse(
@@ -101,11 +101,11 @@ async def voice_stream(websocket: WebSocket, farm_id: str, db: AsyncSession = De
             transcript = data.get("transcript", "")
             language = data.get("language", "en")
 
-            satellite = get_satellite_provider().get_satellite_data(farm_id)
-            weather = get_weather_provider().get_weather_data(farm_id)
-            soil = get_soil_provider().get_soil_data(farm_id)
-            risk = get_risk_provider().get_risk_assessment(farm_id)
-            recommendations = get_recommendation_provider().get_recommendations(farm_id)
+            satellite = get_satellite_provider().get_satellite_data(farm_id, farm=farm)
+            weather = get_weather_provider().get_weather_data(farm_id, farm=farm)
+            soil = get_soil_provider().get_soil_data(farm_id, farm=farm)
+            risk = get_risk_provider().get_risk_assessment(farm_id, farm=farm)
+            recommendations = get_recommendation_provider().get_recommendations(farm_id, farm=farm)
 
             analysis_payload = {
                 "farm": {
@@ -130,7 +130,7 @@ async def voice_stream(websocket: WebSocket, farm_id: str, db: AsyncSession = De
             async for chunk in get_gemini_response_stream(
                 question=enriched_question,
                 farm_context_str=farm_context_str,
-                model="gemini-3-flash-live",
+                model="gemini-3.1-flash-lite",
             ):
                 await websocket.send_text(chunk)
 
@@ -140,6 +140,9 @@ async def voice_stream(websocket: WebSocket, farm_id: str, db: AsyncSession = De
     except WebSocketDisconnect:
         pass
     except Exception as e:
-        await websocket.send_text(f"\n[Error: {str(e)}]")
-        await websocket.close(code=1011)
+        try:
+            await websocket.send_text(f"\n[Error: {str(e)}]")
+            await websocket.close(code=1011)
+        except Exception:
+            pass
 

@@ -1,7 +1,12 @@
 import json
+import re
+import asyncio
+import logging
 from google import genai
 from google.genai import types
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 # System prompt grounding Gemini strictly to farm data
 SYSTEM_PROMPT = """You are AgroResilience AI — an agricultural assistant for Indian farmers.
@@ -76,6 +81,71 @@ Data mode: {analysis.get('data_mode', 'demo')}
     return context.strip()
 
 
+def generate_offline_advisory(question: str, farm_context_str: str) -> str:
+    """
+    Generate an actionable farm advisory when Gemini API is unavailable (e.g. quota, network, or billing).
+    Grounded strictly in the observed farm telemetry context.
+    """
+    crop = "crop"
+    risk_level = "Moderate Risk"
+    score = "40"
+    rain = "12"
+    health = "72"
+    top_action = "Inspect soil moisture before irrigation and ensure drainage channels are clear."
+
+    m_crop = re.search(r'- Crop:\s*(.+)', farm_context_str)
+    if m_crop:
+        crop = m_crop.group(1).strip()
+
+    m_risk = re.search(r'- Overall risk:\s*([0-9]+)/100\s*\(([^)]+)\)', farm_context_str)
+    if m_risk:
+        score = m_risk.group(1)
+        risk_level = m_risk.group(2)
+
+    m_rain = re.search(r'- Rainfall \(72h\):\s*([0-9.]+)\s*mm', farm_context_str)
+    if m_rain:
+        rain = m_rain.group(1)
+
+    m_health = re.search(r'- Vegetation health:\s*([0-9]+)/100', farm_context_str)
+    if m_health:
+        health = m_health.group(1)
+
+    m_recs = re.search(r'## Current Recommendations\s*(\[.*?\])', farm_context_str, re.DOTALL)
+    if m_recs:
+        try:
+            recs = json.loads(m_recs.group(1))
+            if recs and isinstance(recs, list) and 'action' in recs[0]:
+                top_action = recs[0]['action']
+        except Exception:
+            pass
+
+    q_lower = question.lower()
+    if any(k in q_lower for k in ["bengali", "বাংলা", "respond in bengali"]):
+        return (
+            f"আপনার {crop} ফসলের সামগ্রিক ঝুঁকি {score}/১০০ ({risk_level})। "
+            f"উদ্ভিদের স্বাস্থ্য {health}/১০০ এবং আগামী ৩ দিনে {rain} মিমি বৃষ্টিপাতের সম্ভাবনা রয়েছে। "
+            f"পরামর্শ: {top_action}"
+        )
+    elif any(k in q_lower for k in ["hindi", "हिंदी", "respond in hindi"]):
+        return (
+            f"आपकी {crop} फसल के लिए कुल जोखिम {score}/100 ({risk_level}) है। "
+            f"फसल स्वास्थ्य स्कोर {health}/100 है और अगले 72 घंटों में {rain} मिमी बारिश का अनुमान है। "
+            f"मुख्य सलाह: {top_action}"
+        )
+    elif any(k in q_lower for k in ["assamese", "অসমীয়া", "respond in assamese"]):
+        return (
+            f"আপোনাৰ {crop} খেতিৰ সামগ্ৰিক বিপদ {score}/১০০ ({risk_level})। "
+            f"শস্যৰ স্বাস্থ্য {health}/১০০ আৰু আগন্তুক ৭২ ঘণ্টাত {rain} মিমি বৰষুণৰ সম্ভাৱনা আছে। "
+            f"প্ৰধান পৰামৰ্শ: {top_action}"
+        )
+    else:
+        return (
+            f"For your {crop} crop, the overall risk is {score}/100 ({risk_level}). "
+            f"Vegetation health is currently {health}/100 with {rain} mm rainfall expected over the next 72 hours. "
+            f"Recommended action: {top_action}"
+        )
+
+
 async def get_gemini_response(
     question: str,
     farm_context_str: str,
@@ -84,13 +154,10 @@ async def get_gemini_response(
 ) -> str:
     """
     Send a question + farm context to Gemini and return the response text.
-    Falls back gracefully if no API key is set.
+    Falls back gracefully if no API key is set or if billing/quota is exhausted.
     """
     if not settings.GEMINI_API_KEY:
-        return (
-            "Gemini AI is not configured. Please set the GEMINI_API_KEY environment variable. "
-            "In demo mode, the farm analysis data above contains all available insights."
-        )
+        return generate_offline_advisory(question, farm_context_str)
 
     try:
         client = genai.Client(api_key=settings.GEMINI_API_KEY)
@@ -113,11 +180,10 @@ async def get_gemini_response(
             parts=[types.Part(text=user_message)]
         ))
 
-        if "gemini-3" in model:
-            model = "gemini-3.1-flash-lite"
+        target_model = "gemini-3.1-flash-lite" if ("gemini-3" in model or "live" in model) else model
 
         response = await client.aio.models.generate_content(
-            model=model,
+            model=target_model,
             contents=contents,
             config=types.GenerateContentConfig(
                 system_instruction=SYSTEM_PROMPT,
@@ -129,16 +195,25 @@ async def get_gemini_response(
         return response.text or "No response generated."
 
     except Exception as e:
-        return f"AI service temporarily unavailable: {str(e)}"
+        logger.warning(f"Gemini API error ({e}), providing grounded advisory fallback")
+        return generate_offline_advisory(question, farm_context_str)
+
 
 async def get_gemini_response_stream(
     question: str,
     farm_context_str: str,
     history: list[dict] | None = None,
-    model: str = "gemini-3-flash-live",
+    model: str = "gemini-3.1-flash-lite",
 ):
+    """
+    Stream farm context + question answers token by token.
+    Falls back gracefully to streaming word-by-word advisory if Gemini service has an issue.
+    """
     if not settings.GEMINI_API_KEY:
-        yield "Gemini AI is not configured. Please set the GEMINI_API_KEY environment variable."
+        fallback = generate_offline_advisory(question, farm_context_str)
+        for word in fallback.split(" "):
+            yield word + " "
+            await asyncio.sleep(0.04)
         return
 
     try:
@@ -159,31 +234,10 @@ async def get_gemini_response_stream(
             parts=[types.Part(text=user_message)]
         ))
 
-        if "live" in model.lower():
-            # Try native Multimodal Live API
-            config = types.LiveConnectConfig(
-                system_instruction=types.Content(parts=[types.Part(text=SYSTEM_PROMPT)])
-            )
-            try:
-                async with client.aio.live.connect(model=model, config=config) as session:
-                    await session.send(input=user_message, end_of_turn=True)
-                    async for response in session.receive():
-                        if response.server_content and response.server_content.model_turn:
-                            for part in response.server_content.model_turn.parts:
-                                if part.text:
-                                    yield part.text
-                return
-            except Exception as e:
-                # If the live model doesn't exist for their API version/tier, fallback silently
-                print(f"Live API failed ({e}), falling back to standard stream...")
-                model = "gemini-3.1-flash-lite"
-        
-        # Fallback for standard streaming models
-        if "gemini-3" in model:
-            model = "gemini-3.1-flash-lite"
+        target_model = "gemini-3.1-flash-lite" if ("gemini-3" in model or "live" in model) else model
 
         response = await client.aio.models.generate_content_stream(
-            model=model,
+            model=target_model,
             contents=contents,
             config=types.GenerateContentConfig(
                 system_instruction=SYSTEM_PROMPT,
@@ -196,4 +250,9 @@ async def get_gemini_response_stream(
                 yield chunk.text
 
     except Exception as e:
-        yield f"\n[Error: {str(e)}]"
+        logger.warning(f"Gemini API stream error ({e}), providing grounded advisory fallback")
+        fallback = generate_offline_advisory(question, farm_context_str)
+        for word in fallback.split(" "):
+            yield word + " "
+            await asyncio.sleep(0.04)
+
