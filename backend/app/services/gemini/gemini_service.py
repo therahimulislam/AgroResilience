@@ -114,7 +114,7 @@ async def get_gemini_response(
         ))
 
         if "gemini-3" in model:
-            model = "gemini-2.0-flash"
+            model = "gemini-3.1-flash-lite"
 
         response = await client.aio.models.generate_content(
             model=model,
@@ -176,11 +176,11 @@ async def get_gemini_response_stream(
             except Exception as e:
                 # If the live model doesn't exist for their API version/tier, fallback silently
                 print(f"Live API failed ({e}), falling back to standard stream...")
-                model = "gemini-2.0-flash"
+                model = "gemini-3.1-flash-lite"
         
         # Fallback for standard streaming models
         if "gemini-3" in model:
-            model = "gemini-2.0-flash"
+            model = "gemini-3.1-flash-lite"
 
         response = await client.aio.models.generate_content_stream(
             model=model,

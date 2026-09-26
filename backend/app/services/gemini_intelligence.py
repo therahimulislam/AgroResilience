@@ -95,7 +95,7 @@ Use simple, farmer-friendly language.
 """
 
     interaction = client.interactions.create(
-        model="gemini-2.0-flash",
+        model="gemini-3.1-flash-lite",
         input=prompt,
     )
 
