@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { analyzeFarm, getCachedAnalysis, hasActiveAnalysis } from '../services/analysis';
+import { analyzeFarm, getCachedAnalysis } from '../services/analysis';
 import { getFarm, type Farm } from '../services/farms';
 import { type AnalysisResult } from '../types/analysis';
 import MetricCard from '../components/dashboard/MetricCard';
@@ -30,15 +30,15 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (farmId) {
+      // Reset state for this farm first
+      setResult(null);
+      setError(null);
+      setFarm(null);
+
       getFarm(farmId).then(f => {
         setFarm(f);
-        
         const cached = getCachedAnalysis(farmId);
         if (cached) setResult(cached);
-        
-        if (hasActiveAnalysis(farmId)) {
-          executeAnalysis(f);
-        }
       }).catch(console.error);
     }
   }, [farmId]);
