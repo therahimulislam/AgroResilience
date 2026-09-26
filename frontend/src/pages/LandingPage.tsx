@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import {
   Leaf, Satellite, CloudRain, Brain, ShieldCheck,
   ArrowRight, Star, TrendingUp, Zap, Globe, ChevronRight, Activity
@@ -93,7 +94,7 @@ const steps = [
 ];
 
 export default function LandingPage() {
-  const isLoggedIn = !!localStorage.getItem('token');
+  const { isLoggedIn } = useAuth();
 
   return (
     <div className="overflow-x-hidden">
@@ -138,12 +139,14 @@ export default function LandingPage() {
                 {isLoggedIn ? 'Open My Farms' : 'Start For Free'}
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Link>
-              <Link
-                to="/login"
-                className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white/10 backdrop-blur-sm border border-white/20 text-white font-semibold rounded-2xl hover:bg-white/20 transition-all duration-300 text-lg"
-              >
-                Sign In
-              </Link>
+              {!isLoggedIn && (
+                <Link
+                  to="/login"
+                  className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white/10 backdrop-blur-sm border border-white/20 text-white font-semibold rounded-2xl hover:bg-white/20 transition-all duration-300 text-lg"
+                >
+                  Sign In
+                </Link>
+              )}
             </div>
 
             {/* Trust badges */}
