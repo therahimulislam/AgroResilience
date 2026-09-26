@@ -18,6 +18,7 @@ AgroResilience is a full-stack, intelligence-driven platform designed to empower
 - 📡 **Multi-Provider Intelligence Pipeline:** A unified architecture aggregating mock (or real) data from Satellite (Vegetation Health), Weather, and Soil APIs.
 - 📊 **Dynamic Risk & Health Dashboards:** Visual ring gauges and trend charts (built with Recharts) breaking down Climate Risk, Water Risk, and Soil Health.
 - 🌱 **Crop Suitability Engine:** Automated matching of current field conditions to optimal crop profiles.
+- 🛰️ **Farm-Aware Intelligence Engine:** A sophisticated deterministic data generator that produces scientifically-accurate simulated data (NDVI, soil moisture, climate risk) based on the farm's specific crop biology, seasonality, latitude, and irrigation type.
 - 🤖 **Gemini AI Farm Assistant (Chat & Voice):** A farm-grounded AI assistant that knows your farm's exact stats. Ask questions via text or **Voice (Web Speech API)** and get localized answers (English, Hindi, Bengali, Assamese) via TTS.
 - 🔐 **Robust Security:** Full JWT-based authentication and separated farmer data boundaries.
 
