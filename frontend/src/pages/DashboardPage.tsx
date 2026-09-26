@@ -8,7 +8,7 @@ import RiskIndex from '../components/risk/RiskIndex';
 import CropSuitabilityPanel from '../components/crops/CropSuitabilityPanel';
 import RecommendationsPanel from '../components/recommendations/RecommendationsPanel';
 import WeatherSoilPanel from '../components/dashboard/WeatherSoilPanel';
-import { Leaf, MapPin, Activity, RefreshCw, AlertTriangle, Cpu, TrendingUp, ChevronRight, LayoutDashboard } from 'lucide-react';
+import { Leaf, MapPin, Activity, RefreshCw, AlertTriangle, Cpu, TrendingUp, ChevronRight, LayoutDashboard, Loader2 } from 'lucide-react';
 
 export default function DashboardPage() {
   const { farmId } = useParams<{ farmId: string }>();
@@ -195,11 +195,14 @@ export default function DashboardPage() {
             </div>
             <div className="flex items-center gap-3">
               <button
-                onClick={() => setResult(null)}
-                className="flex items-center gap-1.5 px-4 py-2 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-xl hover:border-emerald-400 hover:text-emerald-600 transition-colors"
+                onClick={handleAnalyze}
+                disabled={loading}
+                className="flex items-center gap-1.5 px-4 py-2 bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-xl hover:border-emerald-400 hover:text-emerald-600 transition-colors disabled:opacity-60"
               >
-                <RefreshCw className="w-3.5 h-3.5" />
-                Re-analyze
+                {loading
+                  ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Analyzing...</>
+                  : <><RefreshCw className="w-3.5 h-3.5" /> Re-analyze</>
+                }
               </button>
             </div>
           </div>
