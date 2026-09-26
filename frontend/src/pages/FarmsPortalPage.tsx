@@ -4,7 +4,7 @@ import { getFarms, deleteFarm, type Farm } from '../services/farms';
 import { getMe } from '../services/auth';
 import {
   PlusCircle, Leaf, MapPin, Droplets, Calendar, Activity,
-  Trash2, ChevronRight, Loader2, LayoutDashboard, MessageSquare, TrendingUp
+  Trash2, ChevronRight, Loader2, LayoutDashboard, MessageSquare, TrendingUp, AlertTriangle, X
 } from 'lucide-react';
 
 function EmptyState() {
@@ -30,6 +30,7 @@ function EmptyState() {
 
 function FarmCard({ farm, onDelete }: { farm: Farm; onDelete: (id: string) => void }) {
   const [deleting, setDeleting] = useState(false);
+  const [showModal, setShowModal] = useState(false);
 
   const cropEmoji: Record<string, string> = {
     Rice: '🌾', Wheat: '🌿', Maize: '🌽', Cotton: '☁️', Sugarcane: '🎋'
@@ -37,20 +38,70 @@ function FarmCard({ farm, onDelete }: { farm: Farm; onDelete: (id: string) => vo
   const emoji = cropEmoji[farm.current_crop || ''] || '🌱';
   const navigate = useNavigate();
 
-  const handleDelete = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    if (!confirm(`Delete "${farm.name}"? This cannot be undone.`)) return;
+  const handleDelete = async () => {
     setDeleting(true);
     try {
       await deleteFarm(farm.id);
       onDelete(farm.id);
     } catch {
-      alert('Failed to delete farm.');
       setDeleting(false);
+      setShowModal(false);
     }
   };
 
   return (
+    <>
+      {/* Delete Confirmation Modal */}
+      {showModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
+          onClick={() => setShowModal(false)}
+        >
+          <div
+            className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 space-y-6 animate-in fade-in zoom-in-95"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Icon */}
+            <div className="flex items-center justify-between">
+              <div className="w-14 h-14 bg-red-50 rounded-2xl flex items-center justify-center">
+                <AlertTriangle className="w-7 h-7 text-red-500" />
+              </div>
+              <button onClick={() => setShowModal(false)} className="p-2 rounded-xl text-gray-400 hover:bg-gray-100 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Delete Farm?</h3>
+              <p className="text-gray-500 text-sm leading-relaxed">
+                You are about to permanently delete <span className="font-semibold text-gray-800">"{farm.name}"</span>. All associated data including analysis results will be lost. This action cannot be undone.
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowModal(false)}
+                disabled={deleting}
+                className="flex-1 px-4 py-3 rounded-2xl border border-gray-200 text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex-1 px-4 py-3 rounded-2xl bg-gradient-to-r from-red-500 to-rose-600 text-white font-semibold hover:shadow-lg hover:shadow-red-200 transition-all flex items-center justify-center gap-2"
+              >
+                {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                {deleting ? 'Deleting...' : 'Delete Farm'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     <div 
       onClick={() => navigate(`/farms/${farm.id}/dashboard`)}
       className="group bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 overflow-hidden cursor-pointer"
@@ -71,7 +122,7 @@ function FarmCard({ farm, onDelete }: { farm: Farm; onDelete: (id: string) => vo
             </div>
           </div>
           <button
-            onClick={(e) => { e.stopPropagation(); handleDelete(e); }}
+            onClick={(e) => { e.stopPropagation(); setShowModal(true); }}
             disabled={deleting}
             className="p-2 rounded-xl text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
           >
@@ -131,6 +182,7 @@ function FarmCard({ farm, onDelete }: { farm: Farm; onDelete: (id: string) => vo
         </div>
       </div>
     </div>
+    </>
   );
 }
 
