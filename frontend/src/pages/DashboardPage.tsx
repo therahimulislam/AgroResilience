@@ -43,7 +43,7 @@ export default function DashboardPage() {
     }
   }, [farmId]);
 
-  const executeAnalysis = async (f: Farm) => {
+  const executeAnalysis = async (f: Farm, forceRefresh = false) => {
     if (!f || !farmId) return;
     setLoading(true);
     setError(null);
@@ -64,7 +64,7 @@ export default function DashboardPage() {
         payload.pesticide = Number(advancedData.pesticide);
       }
 
-      const data = await analyzeFarm(farmId, payload);
+      const data = await analyzeFarm(farmId, payload, forceRefresh);
       setResult(data);
     } catch (err: any) {
       setError(err?.response?.data?.detail || 'Analysis failed. Please try again.');
@@ -74,7 +74,7 @@ export default function DashboardPage() {
   };
 
   const handleAnalyze = () => {
-    if (farm) executeAnalysis(farm);
+    if (farm) executeAnalysis(farm, true);
   };
 
   if (!farm) {

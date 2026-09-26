@@ -2,7 +2,13 @@ import { api } from './api';
 
 const analysisPromises = new Map<string, Promise<any>>();
 
-export const analyzeFarm = (farmId: string, data?: any) => {
+export const analyzeFarm = (farmId: string, data?: any, forceRefresh = false) => {
+  if (forceRefresh) {
+    // Clear cache and any in-flight request so we always hit the server fresh
+    localStorage.removeItem(`analysis_${farmId}`);
+    analysisPromises.delete(farmId);
+  }
+
   if (analysisPromises.has(farmId)) {
     return analysisPromises.get(farmId)!;
   }
