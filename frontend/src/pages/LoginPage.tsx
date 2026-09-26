@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { login } from '../services/auth';
+import { useAuth } from '../context/AuthContext';
 import { Leaf, Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react';
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const { login: setAuth } = useAuth();
   const [form, setForm] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -16,7 +18,7 @@ export default function LoginPage() {
     setError('');
     try {
       const tokenData = await login(form.email, form.password);
-      localStorage.setItem('token', tokenData.access_token);
+      setAuth(tokenData.access_token);
       navigate('/farms');
     } catch (err: any) {
       setError(err?.response?.data?.detail || 'Invalid email or password.');

@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, Navigate, useNavigate } from 'react-router-dom';
 import CreateFarmPage from './pages/CreateFarmPage';
 import DashboardPage from './pages/DashboardPage';
 import AssistantPage from './pages/AssistantPage';
@@ -7,13 +7,18 @@ import LoginPage from './pages/LoginPage';
 import LandingPage from './pages/LandingPage';
 import FarmsPortalPage from './pages/FarmsPortalPage';
 import { Leaf, LogOut, PlusCircle, LayoutDashboard, Menu, X } from 'lucide-react';
-import { logout } from './services/auth';
 import { useState } from 'react';
+import { AuthProvider, useAuth } from './context/AuthContext';
 
 function Navbar() {
-  useLocation(); // Force re-render on route change
-  const isLoggedIn = !!localStorage.getItem('token');
+  const { isLoggedIn, logout } = useAuth();
+  const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
 
   return (
     <nav className="bg-white/90 backdrop-blur-md border-b border-gray-100 px-4 md:px-8 py-4 flex items-center justify-between sticky top-0 z-50 shadow-sm">
@@ -37,7 +42,7 @@ function Navbar() {
               <PlusCircle className="w-4 h-4" /> Add Farm
             </Link>
             <button
-              onClick={() => logout()}
+              onClick={handleLogout}
               className="flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-red-500 transition-colors px-3 py-2 rounded-lg hover:bg-red-50"
             >
               <LogOut className="w-4 h-4" /> Sign Out
@@ -69,7 +74,7 @@ function Navbar() {
               <Link to="/farms/new" onClick={() => setMobileOpen(false)} className="flex items-center gap-2 px-4 py-3 rounded-xl text-gray-700 hover:bg-gray-50 font-medium">
                 <PlusCircle className="w-4 h-4" /> Add Farm
               </Link>
-              <button onClick={() => logout()} className="w-full flex items-center gap-2 px-4 py-3 rounded-xl text-red-600 hover:bg-red-50 font-medium">
+              <button onClick={handleLogout} className="w-full flex items-center gap-2 px-4 py-3 rounded-xl text-red-600 hover:bg-red-50 font-medium">
                 <LogOut className="w-4 h-4" /> Sign Out
               </button>
             </>
@@ -87,29 +92,31 @@ function Navbar() {
 
 // Protected route: redirect to login if not authenticated
 function Protected({ children }: { children: React.ReactNode }) {
-  const isLoggedIn = !!localStorage.getItem('token');
+  const { isLoggedIn } = useAuth();
   if (!isLoggedIn) return <Navigate to="/login" replace />;
   return <>{children}</>;
 }
 
 function App() {
   return (
-    <Router>
-      <div className="min-h-screen bg-gray-50 flex flex-col">
-        <Navbar />
-        <main className="flex-1">
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/farms" element={<Protected><FarmsPortalPage /></Protected>} />
-            <Route path="/farms/new" element={<Protected><CreateFarmPage /></Protected>} />
-            <Route path="/farms/:farmId/dashboard" element={<Protected><DashboardPage /></Protected>} />
-            <Route path="/farms/:farmId/assistant" element={<Protected><AssistantPage /></Protected>} />
-          </Routes>
-        </main>
-      </div>
-    </Router>
+    <AuthProvider>
+      <Router>
+        <div className="min-h-screen bg-gray-50 flex flex-col">
+          <Navbar />
+          <main className="flex-1">
+            <Routes>
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/register" element={<RegisterPage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/farms" element={<Protected><FarmsPortalPage /></Protected>} />
+              <Route path="/farms/new" element={<Protected><CreateFarmPage /></Protected>} />
+              <Route path="/farms/:farmId/dashboard" element={<Protected><DashboardPage /></Protected>} />
+              <Route path="/farms/:farmId/assistant" element={<Protected><AssistantPage /></Protected>} />
+            </Routes>
+          </main>
+        </div>
+      </Router>
+    </AuthProvider>
   );
 }
 
