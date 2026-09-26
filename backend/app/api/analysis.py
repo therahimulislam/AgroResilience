@@ -31,13 +31,13 @@ async def analyze_farm(
     if farm.farmer_id != current_user.farmer.id:
         raise HTTPException(status_code=403, detail="Not authorized to access this farm")
 
-    # 2. Orchestrate intelligence services
-    satellite_data = get_satellite_provider().get_satellite_data(farm_id)
-    weather_data = get_weather_provider().get_weather_data(farm_id)
-    soil_data = get_soil_provider().get_soil_data(farm_id)
-    risk_data = get_risk_provider().get_risk_assessment(farm_id)
-    crop_data = get_crop_provider().get_crop_suitability(farm_id)
-    recommendations = get_recommendation_provider().get_recommendations(farm_id)
+    # 2. Orchestrate intelligence services — pass farm for context-aware data
+    satellite_data = get_satellite_provider().get_satellite_data(farm_id, farm)
+    weather_data = get_weather_provider().get_weather_data(farm_id, farm)
+    soil_data = get_soil_provider().get_soil_data(farm_id, farm)
+    risk_data = get_risk_provider().get_risk_assessment(farm_id, farm)
+    crop_data = get_crop_provider().get_crop_suitability(farm_id, farm)
+    recommendations = get_recommendation_provider().get_recommendations(farm_id, farm)
 
     # 3. Return aggregated response
     return {
