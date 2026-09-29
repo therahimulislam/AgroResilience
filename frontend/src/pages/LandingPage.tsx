@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   Leaf, Satellite, CloudRain, Brain, ShieldCheck,
-  ArrowRight, Star, TrendingUp, Zap, Globe, ChevronRight, Activity
+  ArrowRight, TrendingUp, Zap, Globe, ChevronRight, Activity
 } from 'lucide-react';
 
 const features = [
@@ -61,30 +61,6 @@ const stats = [
   { value: '12+', label: 'Data Sources', sub: 'Fused intelligence' },
   { value: '<2s', label: 'Analysis Speed', sub: 'Live AI advisory' },
   { value: 'BRICS', label: 'Compliant', sub: 'Agriculture standards' },
-];
-
-const testimonials = [
-  {
-    quote: "The AI advisory told me to delay irrigation by 2 days because of rainfall forecast. Saved me 40% of water that week.",
-    name: "Rajesh Kumar",
-    role: "Rice Farmer, Assam",
-    initials: "RK",
-    color: "from-emerald-400 to-teal-500",
-  },
-  {
-    quote: "Risk scoring helped me switch from Cotton to Maize before the drought hit. AgroResilience literally saved my harvest.",
-    name: "Priya Sharma",
-    role: "Farm Owner, Punjab",
-    initials: "PS",
-    color: "from-indigo-400 to-purple-500",
-  },
-  {
-    quote: "The Gemini chat is incredible — I ask it questions in Hindi and it answers as if it knows my specific field conditions.",
-    name: "Amitabh Singh",
-    role: "Sugarcane Farmer, UP",
-    initials: "AS",
-    color: "from-orange-400 to-red-500",
-  },
 ];
 
 const steps = [
@@ -218,38 +194,6 @@ export default function LandingPage() {
                 <p className="text-gray-500 leading-relaxed text-sm">{f.desc}</p>
                 <div className={`mt-6 flex items-center gap-2 ${f.textColor} text-sm font-semibold opacity-0 group-hover:opacity-100 transition-opacity`}>
                   Learn more <ChevronRight className="w-4 h-4" />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials */}
-      <section className="py-24 bg-white">
-        <div className="max-w-7xl mx-auto px-4 md:px-8">
-          <div className="text-center mb-16">
-            <div className="flex justify-center mb-4 gap-1">
-              {[...Array(5)].map((_, i) => <Star key={i} className="w-6 h-6 fill-amber-400 text-amber-400" />)}
-            </div>
-            <h2 className="text-4xl md:text-5xl font-black text-gray-900">Trusted by farmers <span className="text-emerald-600">across India</span></h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {testimonials.map(t => (
-              <div key={t.name} className="bg-gradient-to-br from-slate-50 to-white border border-gray-100 rounded-3xl p-8 shadow-sm hover:shadow-xl transition-all duration-300">
-                <div className="flex gap-1 mb-6">
-                  {[...Array(5)].map((_, i) => <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />)}
-                </div>
-                <p className="text-gray-700 leading-relaxed mb-6 text-sm">"{t.quote}"</p>
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${t.color} flex items-center justify-center text-white font-bold text-sm`}>
-                    {t.initials}
-                  </div>
-                  <div>
-                    <p className="font-semibold text-gray-900 text-sm">{t.name}</p>
-                    <p className="text-gray-500 text-xs">{t.role}</p>
-                  </div>
                 </div>
               </div>
             ))}
